@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const { Client } = pg;
+const DB_URL_FALLBACK = 'postgresql://neondb_owner:npg_MN89fGchBILz@ep-crimson-river-atoix06e-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-s3-sentinel-key-2026';
 
 const corsHeaders = {
@@ -17,7 +18,7 @@ const corsHeaders = {
 // Helper to establish DB connection
 async function getDbClient() {
   const client = new Client({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: process.env.DATABASE_URL || DB_URL_FALLBACK,
     ssl: {
       rejectUnauthorized: false,
     },
@@ -56,7 +57,18 @@ export const handler = async (event, context) => {
   const path = event.path.replace(/^\/\.netlify\/functions\/api/, '/api');
   const method = event.httpMethod;
 
-  console.log(`[API Request] Method: ${method}, Path: ${path}`);
+  if (path === '/api/debug' && method === 'GET') {
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        databaseUrlPrefix: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 25) : null,
+        nodeEnv: process.env.NODE_ENV,
+        envKeys: Object.keys(process.env).filter(k => k.includes('DATA') || k.includes('JWT') || k.includes('NETLIFY'))
+      }),
+    };
+  }
 
   let client;
   try {
