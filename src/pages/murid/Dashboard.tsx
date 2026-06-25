@@ -47,15 +47,22 @@ export default function MuridDashboard() {
     }
   };
 
-  // Mock progress or calculate based on results
-  const getSubjectProgress = (subjectId: number) => {
-    // Simple logic: if they have any result for this subject, show progress.
-    // In our seed data, we have 1 exercise. If they completed it, progress is 100%, else 0%.
-    const completedForSubject = results.filter(r => r.subject_name === 'Matematika Dasar');
-    if (subjectId === 1 && completedForSubject.length > 0) {
-      return 100;
+  // Calculate progress based on unique completed exercises per subject
+  const getSubjectProgress = (subjectId: number, subjectName: string) => {
+    const uniqueCompleted = new Set(
+      results
+        .filter(r => r.subject_name === subjectName)
+        .map(r => r.exercise_id)
+    ).size;
+
+    if (subjectId === 1) {
+      // Matematika Dasar has 1 exercise
+      return Math.min(100, Math.round((uniqueCompleted / 1) * 100));
+    } else if (subjectId === 2) {
+      // Hafalan Perkalian 1-10 has 10 exercises
+      return Math.min(100, Math.round((uniqueCompleted / 10) * 100));
     }
-    return 0;
+    return uniqueCompleted > 0 ? 100 : 0;
   };
 
   if (loading) {
@@ -125,7 +132,7 @@ export default function MuridDashboard() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {subjects.map((sub: any) => {
-              const progress = getSubjectProgress(sub.id);
+              const progress = getSubjectProgress(sub.id, sub.name);
               return (
                 <div key={sub.id} className="glass-card flex flex-col justify-between p-6 rounded-2xl relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors pointer-events-none" />
@@ -168,6 +175,65 @@ export default function MuridDashboard() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Riwayat Latihan Saya */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <Award className="w-5 h-5 text-indigo-500" />
+          Riwayat Latihan Saya
+        </h2>
+        
+        {results.length === 0 ? (
+          <div className="text-center py-12 glass-panel rounded-2xl border border-slate-850">
+            <Award className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+            <p className="text-slate-400">Kamu belum pernah mengerjakan latihan. Ayo mulai belajar!</p>
+          </div>
+        ) : (
+          <div className="glass-panel rounded-2xl border border-slate-800/80 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-900/50">
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Mata Pelajaran</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Nama Latihan</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Nilai</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Tanggal & Waktu</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50">
+                  {results.map((res: any) => (
+                    <tr key={res.id} className="hover:bg-slate-800/20 transition-colors">
+                      <td className="px-6 py-4 text-sm font-semibold text-indigo-300">
+                        {res.subject_name}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-200">
+                        {res.exercise_title}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                          res.score === 100 
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                            : res.score >= 70 
+                              ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
+                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                        }`}>
+                          {res.score} / 100
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-xs text-slate-400">
+                        {new Date(res.completed_at).toLocaleString('id-ID', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short'
+                        })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
