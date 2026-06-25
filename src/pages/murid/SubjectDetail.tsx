@@ -139,7 +139,8 @@ export default function SubjectDetail() {
         },
         body: JSON.stringify({
           exercise_id: activeExercise.id,
-          answers: selectedAnswers
+          answers: selectedAnswers,
+          questions: questions
         })
       });
 
@@ -213,7 +214,7 @@ export default function SubjectDetail() {
 
       {/* Active Exercise Quiz View */}
       {activeExercise ? (
-        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-slate-800/80 relative overflow-hidden">
+        <div className="glass-panel p-4 md:p-8 rounded-3xl border border-slate-800/80 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/5 rounded-full blur-[80px] -mr-20 -mt-20 pointer-events-none" />
 
           {/* Quiz Header & Tracker */}
@@ -251,7 +252,7 @@ export default function SubjectDetail() {
                     <button
                       key={idx}
                       onClick={() => handleSelectOption(questions[currentQuestionIndex].id, opt)}
-                      className={`w-full text-left p-4 rounded-xl border text-sm font-semibold transition-all flex items-center justify-between ${isSelected ? 'bg-indigo-600/10 border-indigo-500 text-indigo-300 shadow-md shadow-indigo-500/5' : 'bg-slate-900/30 border-slate-800 text-slate-300 hover:bg-slate-900/80 hover:border-slate-700'}`}
+                      className={`w-full text-left py-3.5 px-4 md:py-4 rounded-xl border text-sm font-semibold transition-all flex items-center justify-between ${isSelected ? 'bg-indigo-600/10 border-indigo-500 text-indigo-300 shadow-md shadow-indigo-500/5' : 'bg-slate-900/30 border-slate-800 text-slate-300 hover:bg-slate-900/80 hover:border-slate-700'}`}
                     >
                       <span>{opt}</span>
                       <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-indigo-400 bg-indigo-500 text-white' : 'border-slate-700 bg-slate-900'}`}>

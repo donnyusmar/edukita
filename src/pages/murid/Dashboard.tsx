@@ -95,7 +95,7 @@ export default function MuridDashboard() {
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-slate-900/40 border border-slate-800 p-8 md:p-10 shadow-2xl">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-slate-900/40 border border-slate-800 p-6 md:p-10 shadow-2xl">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none" />
         <div className="relative z-10 max-w-2xl">
           <h1 className="text-3xl md:text-4xl font-extrabold text-white leading-tight mb-3">

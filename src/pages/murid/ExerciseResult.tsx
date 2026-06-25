@@ -27,7 +27,7 @@ export default function ExerciseResult() {
         setResult(currentResult);
 
         // Fetch questions for this exercise
-        const qRes = await fetch(`/api/questions?exercise_id=${currentResult.exercise_id}`, { headers });
+        const qRes = await fetch(`/api/questions?exercise_id=${currentResult.exercise_id}&result_id=${id}`, { headers });
         if (!qRes.ok) throw new Error('Gagal memuat detail soal');
         const questionsData = await qRes.json();
         setQuestions(questionsData);
@@ -67,8 +67,10 @@ export default function ExerciseResult() {
   const isPerfect = score === 100;
   const isPass = score >= 70;
 
+  const userAnswers = result?.answers?.answers || result?.answers || {};
+
   // Recommendations: identify if they got any question wrong in this subject
-  const hasWrongAnswers = questions.some(q => result.answers[q.id] !== q.correct_answer);
+  const hasWrongAnswers = questions.some(q => userAnswers[q.id] !== q.correct_answer);
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -113,7 +115,7 @@ export default function ExerciseResult() {
 
         <div className="flex justify-center gap-4">
           <Link
-            to={`/subjects/1`}
+            to={`/subjects/${result.subject_id || 1}`}
             className="flex items-center gap-2 py-2.5 px-5 bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-900/80 transition-all hover:border-slate-700"
           >
             <RefreshCw className="w-4 h-4" />
@@ -141,11 +143,11 @@ export default function ExerciseResult() {
           </p>
           <div className="bg-slate-950/40 p-4 rounded-xl border border-amber-500/10 flex items-center justify-between">
             <div>
-              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Matematika Dasar</span>
-              <h4 className="font-semibold text-white text-sm mt-0.5">Aljabar Sederhana</h4>
+              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">{result.subject_name}</span>
+              <h4 className="font-semibold text-white text-sm mt-0.5">{result.exercise_title}</h4>
             </div>
             <Link 
-              to="/subjects/1"
+              to={`/subjects/${result.subject_id || 1}`}
               className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg bg-amber-500 text-slate-950 text-xs font-extrabold hover:bg-amber-400 transition-colors"
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -160,7 +162,7 @@ export default function ExerciseResult() {
         <h3 className="text-lg font-bold text-white">Evaluasi Soal Demi Soal</h3>
         <div className="space-y-4">
           {questions.map((q, index) => {
-            const studentAns = result.answers[q.id];
+            const studentAns = userAnswers[q.id];
             const isCorrect = studentAns === q.correct_answer;
             return (
               <div key={q.id} className={`p-6 rounded-2xl border ${isCorrect ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'} space-y-4`}>

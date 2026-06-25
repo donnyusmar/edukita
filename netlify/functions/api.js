@@ -346,6 +346,113 @@ export const handler = async (event, context) => {
     if (path === '/api/questions') {
       if (method === 'GET') {
         const exercise_id = event.queryStringParameters.exercise_id;
+        const result_id = event.queryStringParameters.result_id;
+        
+        // 1. If result_id is provided, try returning saved questions from student_results log
+        if (result_id) {
+          const resultRes = await client.query('SELECT answers FROM student_results WHERE id = $1', [result_id]);
+          const resultRow = resultRes.rows[0];
+          if (resultRow) {
+            const parsed = typeof resultRow.answers === 'string' ? JSON.parse(resultRow.answers) : resultRow.answers;
+            if (parsed && parsed.questions) {
+              return {
+                statusCode: 200,
+                headers: corsHeaders,
+                body: JSON.stringify(parsed.questions),
+              };
+            }
+          }
+          // Fallback if it's an old result without embedded questions
+          const res = await client.query(
+            'SELECT * FROM questions WHERE exercise_id = $1 ORDER BY id ASC',
+            [exercise_id]
+          );
+          return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify(res.rows),
+          };
+        }
+        
+        // 2. Fetch subject and chapter details to check if it's multiplication
+        const infoRes = await client.query(`
+          SELECT s.name as subject_name, c.title as chapter_title, c.subject_id
+          FROM exercises e
+          JOIN chapters c ON e.chapter_id = c.id
+          JOIN subjects s ON c.subject_id = s.id
+          WHERE e.id = $1
+        `, [exercise_id]);
+        const info = infoRes.rows[0];
+        
+        if (info && info.subject_name === 'Hafalan Perkalian 1-10') {
+          // Parse base multiplier X from chapter title (e.g. "Perkalian 7" -> 7)
+          const match = /Perkalian\s+(\d+)/i.exec(info.chapter_title);
+          const base = match ? parseInt(match[1], 10) : 1;
+          
+          // Generate 10 randomized multipliers from 1 to 10
+          const multipliers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+          for (let i = multipliers.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const temp = multipliers[i];
+            multipliers[i] = multipliers[j];
+            multipliers[j] = temp;
+          }
+          
+          // Form 10 random questions
+          const questions = multipliers.map((y, index) => {
+            const correctAnswer = base * y;
+            
+            const distractors = new Set();
+            distractors.add(base * (y + 1));
+            if (y > 1) distractors.add(base * (y - 1));
+            distractors.add(base * y + base);
+            distractors.add(base * y - base);
+            
+            const offsets = [-2, 2, -1, 1, -5, 5, -3, 3, -4, 4];
+            for (const offset of offsets) {
+              if (distractors.size >= 3) break;
+              const val = correctAnswer + offset;
+              if (val > 0 && val !== correctAnswer) {
+                distractors.add(val);
+              }
+            }
+            
+            while (distractors.size < 3) {
+              const val = Math.max(1, correctAnswer + Math.floor(Math.random() * 11) - 5);
+              if (val !== correctAnswer) {
+                distractors.add(val);
+              }
+            }
+            
+            const incorrectList = Array.from(distractors).slice(0, 3);
+            const options = [correctAnswer.toString(), ...incorrectList.map(v => v.toString())];
+            
+            // Shuffle options
+            for (let i = options.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              const tempOpt = options[i];
+              options[i] = options[j];
+              options[j] = tempOpt;
+            }
+            
+            return {
+              id: (index + 1), // temporary identifier
+              exercise_id: parseInt(exercise_id, 10),
+              question_text: `Berapakah hasil dari ${base} x ${y}?`,
+              options: options,
+              correct_answer: correctAnswer.toString(),
+              subject_id: info.subject_id
+            };
+          });
+          
+          return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify(questions),
+          };
+        }
+        
+        // 3. Fallback to normal database questions for other subjects
         const res = await client.query(
           'SELECT * FROM questions WHERE exercise_id = $1 ORDER BY id ASC',
           [exercise_id]
@@ -402,11 +509,16 @@ export const handler = async (event, context) => {
     if (path === '/api/results') {
       if (method === 'POST') {
         // Submit answers
-        const { exercise_id, answers } = JSON.parse(event.body); // answers is object { questionId: answerText }
+        const { exercise_id, answers, questions: clientQuestions } = JSON.parse(event.body); 
         
-        // Fetch all questions for this exercise
-        const questionsRes = await client.query('SELECT * FROM questions WHERE exercise_id = $1', [exercise_id]);
-        const questions = questionsRes.rows;
+        let questions;
+        if (clientQuestions && clientQuestions.length > 0) {
+          questions = clientQuestions;
+        } else {
+          // Fetch all questions for this exercise
+          const questionsRes = await client.query('SELECT * FROM questions WHERE exercise_id = $1', [exercise_id]);
+          questions = questionsRes.rows;
+        }
         
         let correctCount = 0;
         questions.forEach(q => {
@@ -418,9 +530,14 @@ export const handler = async (event, context) => {
         const total = questions.length;
         const score = total > 0 ? Math.round((correctCount / total) * 100) : 0;
         
+        const payloadToStore = {
+          answers,
+          questions
+        };
+        
         const insertRes = await client.query(
           'INSERT INTO student_results (user_id, exercise_id, score, answers, started_at, completed_at) VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING *',
-          [user.id, exercise_id, score, JSON.stringify(answers)]
+          [user.id, exercise_id, score, JSON.stringify(payloadToStore)]
         );
         
         // Gamification / Badges Trigger Evaluation
@@ -487,7 +604,7 @@ export const handler = async (event, context) => {
         if (user.role === 'admin') {
           // Admin can see everything
           query = `
-            SELECT r.*, u.name as student_name, e.title as exercise_title, s.name as subject_name 
+            SELECT r.*, u.name as student_name, e.title as exercise_title, s.name as subject_name, c.subject_id as subject_id 
             FROM student_results r
             JOIN users u ON r.user_id = u.id
             JOIN exercises e ON r.exercise_id = e.id
@@ -498,7 +615,7 @@ export const handler = async (event, context) => {
         } else {
           // Murid sees only their own results
           query = `
-            SELECT r.*, e.title as exercise_title, s.name as subject_name 
+            SELECT r.*, e.title as exercise_title, s.name as subject_name, c.subject_id as subject_id 
             FROM student_results r
             JOIN exercises e ON r.exercise_id = e.id
             JOIN chapters c ON e.chapter_id = c.id
