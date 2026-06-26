@@ -20,25 +20,23 @@ async function run() {
     await client.connect();
     console.log("Connected to PostgreSQL database on Neon.");
 
-    // 1. Create or Get 'Hafalan Pembagian 1-10' Subject
+    // Clean up existing 'Hafalan Pembagian 1-10' subject to allow a fresh 10-question seed
+    console.log("Cleaning up existing 'Hafalan Pembagian 1-10' data to avoid duplicates...");
+    await client.query("DELETE FROM subjects WHERE name = 'Hafalan Pembagian 1-10'");
+
+    // 1. Create 'Hafalan Pembagian 1-10' Subject
     let subjectId;
-    const subCheck = await client.query("SELECT id FROM subjects WHERE name = 'Hafalan Pembagian 1-10'");
-    if (subCheck.rows.length > 0) {
-      subjectId = subCheck.rows[0].id;
-      console.log(`Using existing subject 'Hafalan Pembagian 1-10' with ID: ${subjectId}`);
-    } else {
-      const subInsert = await client.query(`
-        INSERT INTO subjects (name, description, icon, is_active)
-        VALUES ('Hafalan Pembagian 1-10', 'Latihan berjenjang untuk menghafal pembagian 1 sampai dengan 10 secara terstruktur dan teratur.', 'Calculator', true)
-        RETURNING id;
-      `);
-      subjectId = subInsert.rows[0].id;
-      console.log(`Created new subject 'Hafalan Pembagian 1-10' with ID: ${subjectId}`);
-    }
+    const subInsert = await client.query(`
+      INSERT INTO subjects (name, description, icon, is_active)
+      VALUES ('Hafalan Pembagian 1-10', 'Latihan berjenjang untuk menghafal pembagian 1 sampai dengan 10 secara terstruktur dan teratur.', 'Calculator', true)
+      RETURNING id;
+    `);
+    subjectId = subInsert.rows[0].id;
+    console.log(`Created new subject 'Hafalan Pembagian 1-10' with ID: ${subjectId}`);
 
     // 2. Loop through division tables 1 to 10
     for (let n = 1; n <= 10; n++) {
-      console.log(`Seeding Pembagian ${n}...`);
+      console.log(`Seeding Pembagian ${n} (10 Questions)...`);
       
       // Create Chapter
       const chapRes = await client.query(`
@@ -70,9 +68,8 @@ async function run() {
       `, [chapterId, `Kuis Acak Pembagian ${n}`]);
       const exerciseId = exRes.rows[0].id;
 
-      // Create 5 randomized questions for division table N
-      // Questions will ask: (N * m) / N = ? (which equals m)
-      const multipliers = [2, 4, 6, 7, 9]; // Fixed diverse multipliers
+      // Create 10 questions for division table N (multipliers 1 to 10)
+      const multipliers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       for (const m of multipliers) {
         const dividend = n * m; // e.g. 12 if n=3, m=4
         const correctResult = m; // e.g. 4
@@ -109,7 +106,16 @@ async function run() {
       }
     }
 
-    console.log("All 10 division tables, theories, quizzes, and questions seeded successfully!");
+    // 3. Seed Badges for Division
+    console.log("Creating gamification badges...");
+    await client.query(`
+      INSERT INTO badges (name, icon, condition_type, condition_value, subject_id, is_active)
+      VALUES 
+      ('Ksatria Pembagi', 'Award', 'complete_exercise', '2', $1, true),
+      ('Master Pembagian', 'Star', 'perfect_score', '100', $1, true);
+    `, [subjectId]);
+
+    console.log("All 10 division tables, theories, quizzes, and questions (10 per kuis) seeded successfully!");
 
   } catch (err) {
     console.error("Error executing db-pembagian-lengkap script:", err);
