@@ -199,6 +199,69 @@ export default function MuridDashboard() {
   );
 }
 
+
+// ─── Day Group Collapsible Component ──────────────────────────────────────────
+function DayGroup({ day, dayResults }: { day: string; dayResults: any[] }) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <div className="p-4 md:p-6">
+      {/* Day Header with Toggle */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="h-px flex-1 bg-slate-800/60" />
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/60 hover:bg-slate-800 border border-slate-800/50 hover:border-slate-700/50 text-[11px] font-bold text-slate-400 hover:text-slate-200 transition-all uppercase tracking-widest"
+        >
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? 'rotate-0' : '-rotate-90'}`} />
+          <span>{day}</span>
+          <span className="text-[10px] text-slate-500 font-normal">({dayResults.length})</span>
+        </button>
+        <div className="h-px flex-1 bg-slate-800/60" />
+      </div>
+
+      {/* Results for this day */}
+      <div className={`space-y-2 mt-2 transition-all duration-200 ${isOpen ? 'block' : 'hidden'}`}>
+        {dayResults.map((res: any) => {
+          const isPerfect = res.score === 100;
+          const isPass = res.score >= 70;
+          return (
+            <div key={res.id} className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-slate-900/30 border border-slate-800/50 hover:border-slate-700/50 transition-all group">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className={`w-2 h-2 rounded-full shrink-0 ${isPerfect ? 'bg-yellow-400' : isPass ? 'bg-green-400' : 'bg-amber-400'}`} />
+                <div className="overflow-hidden">
+                  <p className="text-xs font-bold text-indigo-300 truncate">{res.subject_name}</p>
+                  <p className="text-sm font-medium text-slate-200 truncate">{res.exercise_title}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-extrabold ${
+                  isPerfect
+                    ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                    : isPass
+                    ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                }`}>
+                  {res.score}/100
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  {new Date(res.completed_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <Link
+                  to={`/results/${res.id}`}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600 hover:border-transparent text-xs font-bold text-indigo-400 hover:text-white transition-all"
+                >
+                  Lihat Hasil
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── History Log Component ────────────────────────────────────────────────────
 function HistoryLog({ results }: { results: any[] }) {
   const [activeWeek, setActiveWeek] = useState(0);
@@ -297,53 +360,7 @@ function HistoryLog({ results }: { results: any[] }) {
           {/* Day Groups */}
           <div className="divide-y divide-slate-800/40">
             {days.map(day => (
-              <div key={day} className="p-4 md:p-6">
-                {/* Day Header */}
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-px flex-1 bg-slate-800/60" />
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-2">{day}</span>
-                  <div className="h-px flex-1 bg-slate-800/60" />
-                </div>
-
-                {/* Results for this day */}
-                <div className="space-y-2">
-                  {dayMap[day].map((res: any) => {
-                    const isPerfect = res.score === 100;
-                    const isPass = res.score >= 70;
-                    return (
-                      <div key={res.id} className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-slate-900/30 border border-slate-800/50 hover:border-slate-700/50 transition-all group">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <div className={`w-2 h-2 rounded-full shrink-0 ${isPerfect ? 'bg-yellow-400' : isPass ? 'bg-green-400' : 'bg-amber-400'}`} />
-                          <div className="overflow-hidden">
-                            <p className="text-xs font-bold text-indigo-300 truncate">{res.subject_name}</p>
-                            <p className="text-sm font-medium text-slate-200 truncate">{res.exercise_title}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className={`px-2.5 py-1 rounded-lg text-xs font-extrabold ${
-                            isPerfect
-                              ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-                              : isPass
-                              ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          }`}>
-                            {res.score}/100
-                          </span>
-                          <span className="text-[10px] text-slate-500">
-                            {new Date(res.completed_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <Link
-                            to={`/results/${res.id}`}
-                            className="px-3 py-1.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600 hover:border-transparent text-xs font-bold text-indigo-400 hover:text-white transition-all"
-                          >
-                            Lihat Hasil
-                          </Link>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <DayGroup key={day} day={day} dayResults={dayMap[day]} />
             ))}
           </div>
         </>
