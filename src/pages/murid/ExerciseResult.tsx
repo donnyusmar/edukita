@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Award, BookOpen, AlertCircle, RefreshCw, CheckCircle2, XCircle, ArrowRight, Star } from 'lucide-react';
+import { Award, BookOpen, AlertCircle, RefreshCw, CheckCircle2, XCircle, ArrowRight, Star, Filter } from 'lucide-react';
 
 export default function ExerciseResult() {
   const { id } = useParams<{ id: string }>();
@@ -9,6 +9,7 @@ export default function ExerciseResult() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [newBadges, setNewBadges] = useState<any[]>([]);
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'benar' | 'salah'>('all');
 
   useEffect(() => {
     // Fetch result detail
@@ -157,58 +158,121 @@ export default function ExerciseResult() {
         </div>
       )}
 
-      {/* Detailed Answers Summary */}
+      {/* Grouped Answers Review */}
       <div className="space-y-4">
-        <h3 className="text-lg font-bold text-white">Evaluasi Soal Demi Soal</h3>
+        {/* Header + Filter Tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <Filter className="w-5 h-5 text-indigo-400" />
+            Review Jawaban
+          </h3>
+          {/* Stats summary */}
+          <div className="flex gap-2">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-xs font-bold text-green-400">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              {questions.filter(q => userAnswers[q.id] === q.correct_answer).length} Benar
+            </span>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs font-bold text-red-400">
+              <XCircle className="w-3.5 h-3.5" />
+              {questions.filter(q => userAnswers[q.id] !== q.correct_answer).length} Salah
+            </span>
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex gap-1 p-1 bg-slate-900/60 rounded-xl border border-slate-800/60 w-fit">
+          {(['all', 'benar', 'salah'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setReviewFilter(f)}
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                reviewFilter === f
+                  ? f === 'benar'
+                    ? 'bg-green-600 text-white shadow'
+                    : f === 'salah'
+                    ? 'bg-red-600 text-white shadow'
+                    : 'bg-indigo-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {f === 'all' ? 'Semua Soal' : f === 'benar' ? '✓ Jawaban Benar' : '✗ Jawaban Salah'}
+            </button>
+          ))}
+        </div>
+
+        {/* Question Cards */}
         <div className="space-y-4">
-          {questions.map((q, index) => {
-            const studentAns = userAnswers[q.id];
-            const isCorrect = studentAns === q.correct_answer;
-            return (
-              <div key={q.id} className={`p-6 rounded-2xl border ${isCorrect ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'} space-y-4`}>
-                <div className="flex justify-between items-start">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Soal {index + 1}</span>
-                  <div className="flex items-center gap-1">
-                    {isCorrect ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 text-green-400" />
-                        <span className="text-xs font-bold text-green-400">Benar</span>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-4 h-4 text-red-400" />
-                        <span className="text-xs font-bold text-red-400">Salah</span>
-                      </>
-                    )}
+          {(() => {
+            const filtered = questions.filter(q => {
+              const isCorrect = userAnswers[q.id] === q.correct_answer;
+              if (reviewFilter === 'benar') return isCorrect;
+              if (reviewFilter === 'salah') return !isCorrect;
+              return true;
+            });
+
+            if (filtered.length === 0) {
+              return (
+                <div className="text-center py-10 glass-panel rounded-2xl border border-slate-800/60">
+                  <p className="text-slate-400 text-sm">
+                    {reviewFilter === 'benar' ? 'Tidak ada jawaban benar.' : 'Tidak ada jawaban salah. Semua benar! 🎉'}
+                  </p>
+                </div>
+              );
+            }
+
+            return filtered.map((q, index) => {
+              const studentAns = userAnswers[q.id];
+              const isCorrect = studentAns === q.correct_answer;
+              const origIndex = questions.findIndex(orig => orig.id === q.id);
+              return (
+                <div key={q.id} className={`p-6 rounded-2xl border ${isCorrect ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'} space-y-4`}>
+                  <div className="flex justify-between items-start">
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Soal {origIndex + 1}</span>
+                    <div className="flex items-center gap-1">
+                      {isCorrect ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                          <span className="text-xs font-bold text-green-400">Benar</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 text-red-400" />
+                          <span className="text-xs font-bold text-red-400">Salah</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-sm font-semibold text-slate-200">{q.question_text}</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    {q.options.map((opt: string, idx: number) => {
+                      const isStudentChoice = studentAns === opt;
+                      const isCorrectAnswer = q.correct_answer === opt;
+
+                      let btnStyle = 'bg-slate-900/30 border-slate-800 text-slate-400';
+                      if (isCorrectAnswer) {
+                        btnStyle = 'bg-green-500/10 border-green-500/50 text-green-300';
+                      } else if (isStudentChoice && !isCorrect) {
+                        btnStyle = 'bg-red-500/10 border-red-500/50 text-red-300';
+                      }
+
+                      return (
+                        <div key={idx} className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-between ${btnStyle}`}>
+                          <span>{opt}</span>
+                          <div className="flex gap-1">
+                            {isCorrectAnswer && <span className="text-[10px] uppercase font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded">Kunci</span>}
+                            {isStudentChoice && !isCorrect && <span className="text-[10px] uppercase font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded">Anda</span>}
+                            {isStudentChoice && isCorrect && <span className="text-[10px] uppercase font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded">✓ Anda</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-
-                <p className="text-sm font-semibold text-slate-200">{q.question_text}</p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                  {q.options.map((opt: string, idx: number) => {
-                    const isStudentChoice = studentAns === opt;
-                    const isCorrectAnswer = q.correct_answer === opt;
-                    
-                    let btnStyle = 'bg-slate-900/30 border-slate-800 text-slate-400';
-                    if (isCorrectAnswer) {
-                      btnStyle = 'bg-green-500/10 border-green-500/50 text-green-300';
-                    } else if (isStudentChoice && !isCorrect) {
-                      btnStyle = 'bg-red-500/10 border-red-500/50 text-red-300';
-                    }
-
-                    return (
-                      <div key={idx} className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-between ${btnStyle}`}>
-                        <span>{opt}</span>
-                        {isCorrectAnswer && <span className="text-[10px] uppercase font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded">Kunci</span>}
-                        {isStudentChoice && !isCorrect && <span className="text-[10px] uppercase font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded">Anda</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       </div>
     </div>

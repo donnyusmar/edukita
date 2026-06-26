@@ -1,6 +1,48 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, CheckSquare, ChevronRight, HelpCircle, Star, Award, AlertCircle } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckSquare, ChevronRight, HelpCircle, Star, Award, AlertCircle, Volume2 } from 'lucide-react';
+
+// --- Web Audio: Correct Answer Sound ---
+function playCorrectSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const frequencies = [523.25, 659.25, 783.99]; // C5, E5, G5 - major chord
+    frequencies.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.08);
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.08);
+      gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + i * 0.08 + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.45);
+      osc.start(ctx.currentTime + i * 0.08);
+      osc.stop(ctx.currentTime + i * 0.08 + 0.5);
+    });
+  } catch (e) {
+    // Audio not supported — silent fail
+  }
+}
+
+function playWrongSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(120, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch (e) {
+    // silent fail
+  }
+}
 
 export default function SubjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -113,6 +155,13 @@ export default function SubjectDetail() {
   };
 
   const handleSelectOption = (questionId: number, option: string) => {
+    const currentQ = questions.find(q => q.id === questionId);
+    const isCorrect = currentQ && option === currentQ.correct_answer;
+    if (isCorrect) {
+      playCorrectSound();
+    } else {
+      playWrongSound();
+    }
     setSelectedAnswers(prev => ({
       ...prev,
       [questionId]: option

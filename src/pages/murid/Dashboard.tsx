@@ -179,7 +179,7 @@ export default function MuridDashboard() {
         )}
       </div>
 
-      {/* Riwayat Latihan Saya */}
+      {/* Riwayat Latihan Per Hari / Minggu */}
       <div className="space-y-4">
         <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
           <Award className="w-5 h-5 text-indigo-500" />
@@ -192,50 +192,139 @@ export default function MuridDashboard() {
             <p className="text-slate-400">Kamu belum pernah mengerjakan latihan. Ayo mulai belajar!</p>
           </div>
         ) : (
-          <div className="glass-panel rounded-2xl border border-slate-800/80 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 bg-slate-900/50">
-                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Mata Pelajaran</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Nama Latihan</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Nilai</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Tanggal & Waktu</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/50">
-                  {results.map((res: any) => (
-                    <tr key={res.id} className="hover:bg-slate-800/20 transition-colors">
-                      <td className="px-6 py-4 text-sm font-semibold text-indigo-300">
-                        {res.subject_name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-200">
-                        {res.exercise_title}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                          res.score === 100 
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                            : res.score >= 70 
-                              ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
-                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        }`}>
-                          {res.score} / 100
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-400">
-                        {new Date(res.completed_at).toLocaleString('id-ID', {
-                          dateStyle: 'medium',
-                          timeStyle: 'short'
-                        })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <HistoryLog results={results} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── History Log Component ────────────────────────────────────────────────────
+function HistoryLog({ results }: { results: any[] }) {
+  const [activeWeek, setActiveWeek] = useState(0);
+
+  // Group results by ISO week
+  const getWeekKey = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const jan1 = new Date(d.getFullYear(), 0, 1);
+    const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+    return `${d.getFullYear()}-W${week}`;
+  };
+
+  const getWeekLabel = (weekKey: string) => {
+    const [year, wPart] = weekKey.split('-W');
+    const weekNum = parseInt(wPart);
+    // Compute the Monday of that week
+    const jan1 = new Date(parseInt(year), 0, 1);
+    const dayOfWeek = jan1.getDay() || 7;
+    const monday = new Date(jan1.getTime() + (weekNum - 1) * 7 * 86400000 - (dayOfWeek - 1) * 86400000);
+    const sunday = new Date(monday.getTime() + 6 * 86400000);
+    return `${monday.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} – ${sunday.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  };
+
+  // Group by day within each week
+  const getDayKey = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  // Build week groups (sorted newest first)
+  const weekMap: Record<string, any[]> = {};
+  results.forEach(r => {
+    const wk = getWeekKey(r.completed_at);
+    if (!weekMap[wk]) weekMap[wk] = [];
+    weekMap[wk].push(r);
+  });
+  const weeks = Object.keys(weekMap).sort((a, b) => b.localeCompare(a));
+
+  if (weeks.length === 0) return null;
+
+  const currentWeekKey = weeks[activeWeek] || weeks[0];
+  const weekResults = weekMap[currentWeekKey] || [];
+
+  // Group by day
+  const dayMap: Record<string, any[]> = {};
+  weekResults.forEach(r => {
+    const dk = getDayKey(r.completed_at);
+    if (!dayMap[dk]) dayMap[dk] = [];
+    dayMap[dk].push(r);
+  });
+  const days = Object.keys(dayMap).sort((a, b) => {
+    const da = weekResults.find(r => getDayKey(r.completed_at) === a)?.completed_at;
+    const db = weekResults.find(r => getDayKey(r.completed_at) === b)?.completed_at;
+    return new Date(db).getTime() - new Date(da).getTime();
+  });
+
+  return (
+    <div className="glass-panel rounded-2xl border border-slate-800/80 overflow-hidden">
+      {/* Week Navigator */}
+      <div className="flex overflow-x-auto border-b border-slate-800/60 bg-slate-900/40">
+        {weeks.map((wk, idx) => (
+          <button
+            key={wk}
+            onClick={() => setActiveWeek(idx)}
+            className={`flex-shrink-0 px-5 py-3.5 text-xs font-bold transition-all border-b-2 ${
+              activeWeek === idx
+                ? 'border-indigo-500 text-indigo-300 bg-indigo-500/5'
+                : 'border-transparent text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            {idx === 0 ? '📅 Minggu Ini' : `Minggu ${idx + 1}`}
+            <span className="block text-[10px] font-medium text-slate-500 mt-0.5">{getWeekLabel(wk)}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Day Groups */}
+      <div className="divide-y divide-slate-800/40">
+        {days.map(day => (
+          <div key={day} className="p-4 md:p-6">
+            {/* Day Header */}
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-px flex-1 bg-slate-800/60" />
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-2">{day}</span>
+              <div className="h-px flex-1 bg-slate-800/60" />
+            </div>
+
+            {/* Results for this day */}
+            <div className="space-y-2">
+              {dayMap[day].map((res: any) => {
+                const isPerfect = res.score === 100;
+                const isPass = res.score >= 70;
+                return (
+                  <div key={res.id} className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-slate-900/30 border border-slate-800/50 hover:border-slate-700/50 transition-all group">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${isPerfect ? 'bg-yellow-400' : isPass ? 'bg-green-400' : 'bg-amber-400'}`} />
+                      <div className="overflow-hidden">
+                        <p className="text-xs font-bold text-indigo-300 truncate">{res.subject_name}</p>
+                        <p className="text-sm font-medium text-slate-200 truncate">{res.exercise_title}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-extrabold ${
+                        isPerfect
+                          ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                          : isPass
+                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                          : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      }`}>
+                        {res.score}/100
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {new Date(res.completed_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <Link
+                        to={`/results/${res.id}`}
+                        className="px-3 py-1.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600 hover:border-transparent text-xs font-bold text-indigo-400 hover:text-white transition-all"
+                      >
+                        Lihat Hasil
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
