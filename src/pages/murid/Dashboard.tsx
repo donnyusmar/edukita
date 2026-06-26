@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Calculator, Award, ArrowRight, Shield, Layers, HelpCircle } from 'lucide-react';
+import { BookOpen, Calculator, Award, ArrowRight, Shield, Layers, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function MuridDashboard() {
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -202,6 +202,7 @@ export default function MuridDashboard() {
 // ─── History Log Component ────────────────────────────────────────────────────
 function HistoryLog({ results }: { results: any[] }) {
   const [activeWeek, setActiveWeek] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   // Group results by ISO week
   const getWeekKey = (dateStr: string) => {
@@ -256,76 +257,97 @@ function HistoryLog({ results }: { results: any[] }) {
 
   return (
     <div className="glass-panel rounded-2xl border border-slate-800/80 overflow-hidden">
-      {/* Week Navigator */}
-      <div className="flex overflow-x-auto border-b border-slate-800/60 bg-slate-900/40">
-        {weeks.map((wk, idx) => (
-          <button
-            key={wk}
-            onClick={() => setActiveWeek(idx)}
-            className={`flex-shrink-0 px-5 py-3.5 text-xs font-bold transition-all border-b-2 ${
-              activeWeek === idx
-                ? 'border-indigo-500 text-indigo-300 bg-indigo-500/5'
-                : 'border-transparent text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            {idx === 0 ? '📅 Minggu Ini' : `Minggu ${idx + 1}`}
-            <span className="block text-[10px] font-medium text-slate-500 mt-0.5">{getWeekLabel(wk)}</span>
-          </button>
-        ))}
+      {/* Header Panel with Toggle */}
+      <div className="flex items-center justify-between p-4 md:p-5 bg-slate-900/40 border-b border-slate-800/60">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-slate-200">Riwayat Latihan Saya</span>
+          <span className="px-2 py-0.5 text-[10px] font-bold bg-indigo-500/10 text-indigo-400 rounded-full">
+            {results.length} Sesi
+          </span>
+        </div>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="p-1.5 rounded-lg hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 transition-all border border-slate-800/50 hover:border-slate-700/50"
+          title={isExpanded ? "Minimalkan" : "Maksimalkan"}
+        >
+          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
       </div>
 
-      {/* Day Groups */}
-      <div className="divide-y divide-slate-800/40">
-        {days.map(day => (
-          <div key={day} className="p-4 md:p-6">
-            {/* Day Header */}
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-px flex-1 bg-slate-800/60" />
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-2">{day}</span>
-              <div className="h-px flex-1 bg-slate-800/60" />
-            </div>
-
-            {/* Results for this day */}
-            <div className="space-y-2">
-              {dayMap[day].map((res: any) => {
-                const isPerfect = res.score === 100;
-                const isPass = res.score >= 70;
-                return (
-                  <div key={res.id} className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-slate-900/30 border border-slate-800/50 hover:border-slate-700/50 transition-all group">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <div className={`w-2 h-2 rounded-full shrink-0 ${isPerfect ? 'bg-yellow-400' : isPass ? 'bg-green-400' : 'bg-amber-400'}`} />
-                      <div className="overflow-hidden">
-                        <p className="text-xs font-bold text-indigo-300 truncate">{res.subject_name}</p>
-                        <p className="text-sm font-medium text-slate-200 truncate">{res.exercise_title}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-extrabold ${
-                        isPerfect
-                          ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-                          : isPass
-                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                          : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                      }`}>
-                        {res.score}/100
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        {new Date(res.completed_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <Link
-                        to={`/results/${res.id}`}
-                        className="px-3 py-1.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600 hover:border-transparent text-xs font-bold text-indigo-400 hover:text-white transition-all"
-                      >
-                        Lihat Hasil
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+      {isExpanded && (
+        <>
+          {/* Week Navigator */}
+          <div className="flex overflow-x-auto border-b border-slate-800/60 bg-slate-900/40">
+            {weeks.map((wk, idx) => (
+              <button
+                key={wk}
+                onClick={() => setActiveWeek(idx)}
+                className={`flex-shrink-0 px-5 py-3.5 text-xs font-bold transition-all border-b-2 ${
+                  activeWeek === idx
+                    ? 'border-indigo-500 text-indigo-300 bg-indigo-500/5'
+                    : 'border-transparent text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {idx === 0 ? '📅 Minggu Ini' : `Minggu ${idx + 1}`}
+                <span className="block text-[10px] font-medium text-slate-500 mt-0.5">{getWeekLabel(wk)}</span>
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
+
+          {/* Day Groups */}
+          <div className="divide-y divide-slate-800/40">
+            {days.map(day => (
+              <div key={day} className="p-4 md:p-6">
+                {/* Day Header */}
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-px flex-1 bg-slate-800/60" />
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-2">{day}</span>
+                  <div className="h-px flex-1 bg-slate-800/60" />
+                </div>
+
+                {/* Results for this day */}
+                <div className="space-y-2">
+                  {dayMap[day].map((res: any) => {
+                    const isPerfect = res.score === 100;
+                    const isPass = res.score >= 70;
+                    return (
+                      <div key={res.id} className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-slate-900/30 border border-slate-800/50 hover:border-slate-700/50 transition-all group">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${isPerfect ? 'bg-yellow-400' : isPass ? 'bg-green-400' : 'bg-amber-400'}`} />
+                          <div className="overflow-hidden">
+                            <p className="text-xs font-bold text-indigo-300 truncate">{res.subject_name}</p>
+                            <p className="text-sm font-medium text-slate-200 truncate">{res.exercise_title}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-extrabold ${
+                            isPerfect
+                              ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                              : isPass
+                              ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          }`}>
+                            {res.score}/100
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            {new Date(res.completed_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <Link
+                            to={`/results/${res.id}`}
+                            className="px-3 py-1.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 hover:bg-indigo-600 hover:border-transparent text-xs font-bold text-indigo-400 hover:text-white transition-all"
+                          >
+                            Lihat Hasil
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
